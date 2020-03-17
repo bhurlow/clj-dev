@@ -1,14 +1,16 @@
 
 
-add to your `deps.edn` 
+add the following to `~/.clojure/deps.edn`
 
 ```edn
-bh {:git/url "git@github.com:bhurlow/clj-dev.git"
-    :sha "a0017297cb79be41108262f0441d5c841b46f00a"}
+{:aliases
+ {:dev {:extra-deps {bh {:git/url "git@github.com:bhurlow/clj-dev.git"
+                         :sha "ed53a76d208fd85980c6b0f24e4de293cbb0bf21"}}
+        :main-opts ["-m" "bh.main"]}}}
 ```
 
-then start with:
+then start repl with:
 
 ```shell
-clj -m bh.main
+clj -A:dev
 ```
