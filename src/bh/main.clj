@@ -3,18 +3,36 @@
             [clojure.repl :as clj-repl]
             [nrepl.server :refer (start-server)]
             [rebel-readline.core :as rebel-core]
-            [rebel-readline.clojure.main :as rebel-clj-main]))
+            [rebel-readline.clojure.main :as rebel-clj-main]
+            [fipp.ednize]
+            [fipp.edn]
+            [datomic.db]
+            [datomic.query]
+            [datomic.peer]))
 
+(extend-protocol
+ fipp.ednize/IEdn
+  datomic.db.Db
+  (-edn [this]
+    "<#db>"))
+
+(extend-protocol
+ fipp.ednize/IOverride
+  datomic.db.Db
+  (-edn [this]
+    "<#override>"))
+
+(defn print-fn [value writer options]
+  (binding [*out* writer]
+    (fipp.edn/pprint value)))
 
 (defonce nrepl-server (atom nil))
 
-
 (defn start-nrepl! [port]
- (spit ".nrepl-port" port)
- (reset! nrepl-server
-         (start-server :port port
-                       :handler cider-nrepl-handler)))
-
+  (spit ".nrepl-port" port)
+  (reset! nrepl-server
+          (start-server :port port
+                        :handler cider-nrepl-handler)))
 
 (defn -handle-sigint-form
   []
@@ -24,24 +42,23 @@
 (defn start-repl!
   [& [init-ns]]
   (rebel-core/ensure-terminal
-    (rebel-clj-main/repl*
-      {:init (fn []
+   (rebel-clj-main/repl*
+    {:init (fn []
                ; HACK: rebel-readline doesn't have a convenient way to change init ns (it's always `user`).
                ; See https://github.com/bhauman/rebel-readline/issues/157.
-               (when (some? init-ns)
-                 (let [init-ns (symbol init-ns)]
-                   (require init-ns)
-                   (in-ns init-ns))))
+             (when (some? init-ns)
+               (let [init-ns (symbol init-ns)]
+                 (require init-ns)
+                 (in-ns init-ns))))
 
-       :eval (fn [form]
+     :eval (fn [form]
                ; HACK: allows Ctrl+C to interrupt long running tasks.
                ; See https://github.com/bhauman/rebel-readline/issues/180#issuecomment-429057767.
-               (eval `(do ~(-handle-sigint-form) ~form)))})))
+             (eval `(do ~(-handle-sigint-form) ~form)))})))
 
-(defn -main 
+(defn -main
   ([] (-main 7888))
   ([port]
    (println "local dev")
    (start-nrepl! (Integer. port))
    (start-repl! 'user.main)))
-
